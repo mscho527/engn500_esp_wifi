@@ -160,6 +160,34 @@ int main(void)
 	  }
   }
 
+  char AT_IF[] = "AT+CIFSR\r\n";
+  printf("IP address of ESP Chip: ");
+  tx = HAL_UART_Transmit(&huart1, (uint8_t*)AT_IF, strlen(AT_IF), 2000);
+  rx = HAL_UART_Receive(&huart1, (uint8_t*)AT_received, 1000, 4000);
+  int cur = 24;
+  while(AT_received[cur] != 44 && cur < 1000-huart1.RxXferCount){
+	  printf("%c", AT_received[cur]);
+	  cur += 1;
+  }
+  printf("\r\n");
+
+  char AT_CIPMUX[] = "AT+CIPMUX=1\r\n";
+  tx = HAL_UART_Transmit(&huart1, (uint8_t*)AT_CIPMUX, strlen(AT_CIPMUX), 2000);
+  rx = HAL_UART_Receive(&huart1, (uint8_t*)AT_received, 1000, 4000);
+  check_print(tx, &huart1, AT_received);
+
+  char AT_CIP_SV[] = "AT+CIPSERVER=1,80\r\n";
+  printf("Now opening HTTP (80) Socket\r\n");
+  tx = HAL_UART_Transmit(&huart1, (uint8_t*)AT_CIP_SV, strlen(AT_CIP_SV), 2000);
+  rx = HAL_UART_Receive(&huart1, (uint8_t*)AT_received, 1000, 4000);
+  check_print(tx, &huart1, AT_received);
+
+  char AT_IPD_READ[] = "+IPD";
+  while (1){
+	  rx = HAL_UART_Receive(&huart1, (uint8_t*)AT_received, 1000, 4000);
+	  check_print(tx, &huart1, AT_received);
+  }
+
 
 //  char AT_CMD_AT1[] = "AT+CWMODE=?\r\n";
 //  retval = HAL_UART_Transmit(&huart1, (uint8_t*)AT_CMD_AT1, strlen(AT_CMD_AT1), 2000);
