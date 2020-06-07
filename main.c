@@ -45,8 +45,10 @@
 /* Private variables ---------------------------------------------------------*/
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
+HAL_StatusTypeDef tx, rx;
 
 /* USER CODE BEGIN PV */
+char AT_received[1000];
 
 /* USER CODE END PV */
 
@@ -115,7 +117,7 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   RetargetInit(&huart2);
-  /* USER CODE END 2 */
+
 
   printf("Hello, this program will create a Wi-Fi network from your ESP8086 board to test its functionalities.\r\n");
 
@@ -124,8 +126,6 @@ int main(void)
   printf("\nFirst, let's try resetting the board.\r\n");
 
   char AT_CMD_RST[] = "AT+RST\r\n";
-  char AT_received[1000];
-  HAL_StatusTypeDef tx, rx;
   tx = HAL_UART_Transmit(&huart1, (uint8_t*)AT_CMD_RST, strlen(AT_CMD_RST), 2000);
   rx = HAL_UART_Receive(&huart1, (uint8_t*)AT_received, 1000, 4000);
 
@@ -182,34 +182,60 @@ int main(void)
   rx = HAL_UART_Receive(&huart1, (uint8_t*)AT_received, 1000, 4000);
   check_print(tx, &huart1, AT_received);
 
-  char AT_IPD_READ[] = "+IPD";
-  while (1){
+  // Now wait for GET request
+  printf("Now waiting for HTTP request.\r\n");
+  connected = false;
+  while (!connected){
 	  rx = HAL_UART_Receive(&huart1, (uint8_t*)AT_received, 1000, 4000);
-	  check_print(tx, &huart1, AT_received);
+	  if (AT_received[0] == "+" && AT_received[1] == "I" && AT_received[2] == "P" &&
+			  AT_received[3] == "D"){
+		  connected = true;
+		  printf("GET requests received.\r\n");
+
+		  char HTML[] = "Your ESP8266 chip is successfully configured to act as a simple TCP/IP server.\r\n";
+		  char AT_CIPSEND[] = "AT+CIPSEND=81\r\n";
+		  tx = HAL_UART_Transmit(&huart1, (uint8_t*)AT_CIPSEND, strlen(AT_CIPSEND), 2000);
+		  rx = HAL_UART_Receive(&huart1, (uint8_t*)AT_received, 1000, 4000);
+		  tx = HAL_UART_Transmit(&huart1, (uint8_t*)HTML, strlen(HTML), 2000);
+		  rx = HAL_UART_Receive(&huart1, (uint8_t*)AT_received, 1000, 4000);
+		  check_print(tx, &huart1, AT_received);
+	  }
   }
 
 
-//  char AT_CMD_AT1[] = "AT+CWMODE=?\r\n";
-//  retval = HAL_UART_Transmit(&huart1, (uint8_t*)AT_CMD_AT1, strlen(AT_CMD_AT1), 2000);
-//  retval = HAL_UART_Receive(&huart1, (uint8_t*)ATreceived, 1000, 4000);
-//  printf("Rx: %.*s \r\n",1000-huart1.RxXferCount, ATreceived);
-//
-//  char AT_CMD_AT2[] = "AT+CWLAP\r\n";
-//  retval = HAL_UART_Transmit(&huart1, (uint8_t*)AT_CMD_AT2, strlen(AT_CMD_AT2), 2000);
-//  retval = HAL_UART_Receive(&huart1, (uint8_t*)ATreceived, 1000, 4000);
-//  printf("Rx: %.*s \r\n",1000-huart1.RxXferCount, ATreceived);
-//
-//  char AT_CMD_AT3[] = "AT+CWJAP_CUR=\"A8004T\",\"msc634800\"\r\n";
-//  retval = HAL_UART_Transmit(&huart1, (uint8_t*)AT_CMD_AT3, strlen(AT_CMD_AT3), 2000);
-//  retval = HAL_UART_Receive(&huart1, (uint8_t*)ATreceived, 1000, 4000);
-//  printf("Rx: %.*s \r\n",1000-huart1.RxXferCount, ATreceived);
-//
-//  char AT_CMD_AT4[] = "AT+CWJAP_CUR?\r\n";
-//  retval = HAL_UART_Transmit(&huart1, (uint8_t*)AT_CMD_AT4, strlen(AT_CMD_AT4), 2000);
-//  retval = HAL_UART_Receive(&huart1, (uint8_t*)ATreceived, 1000, 4000);
-//  printf("Rx: %.*s \r\n",1000-huart1.RxXferCount, ATreceived);
+////  char HTML1[] = "HTTP/1.1 200 OK\r\n";
+////  char HTML2[] = "Content-Type: text/plain\r\n";
+////  char HTML3[] = "Connection: close\r\n";
+//  char HTML[] = "Your ESP8266 chip is successfully configured to act as a simple TCP/IP server.\r\n";
+////  char HTML[strlen(HTML1) + strlen(HTML2) + strlen(HTML3) + strlen(HTML4)];
+////  strcpy(HTML,HTML1);
+////  strcat(HTML,HTML2);
+////  strcat(HTML,HTML3);
+////  strcat(HTML,HTML4);
+//  char AT_CIPSEND[] = "AT+CIPSEND=81\r\n";
+//  bool notSent = 1;
+//  while (notSent){
+//	tx = HAL_UART_Transmit(&huart1, (uint8_t*)AT_CIPSEND, strlen(AT_CIPSEND), 2000);
+//	rx = HAL_UART_Receive(&huart1, (uint8_t*)AT_received, 1000, 4000);
+//	tx = HAL_UART_Transmit(&huart1, (uint8_t*)HTML, strlen(HTML), 2000);
+//	rx = HAL_UART_Receive(&huart1, (uint8_t*)AT_received, 1000, 4000);
+//	check_print(tx, &huart1, AT_received);
+//	if (AT_received[0] == 'S' &&
+//			AT_received[1] == 'E' &&
+//			AT_received[2] == 'N' &&
+//			AT_received[3] == 'D' &&
+//			AT_received[4] == ' ' &&
+//			AT_received[5] == 'O' &&
+//			AT_received[6] == 'K'){
+//		notSent = 0;
+//	}
+//  }
 
   printf("TEST COMPLETE.\r\n");
+
+  /* USER CODE END 2 */
+ 
+ 
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -217,8 +243,7 @@ int main(void)
   {
     /* USER CODE END WHILE */
 
-
-    /* USER COsDE BEGIN 3 */
+    /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
 }
